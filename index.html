@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
+        }
+        .calendar-day {
+            min-height: 100px;
+            transition: all 0.2s;
+        }
+        .calendar-day:hover {
+            background-color: #f1f5f9;
+        }
+        .today {
+            background-color: #e0f2fe !important;
+            border: 2px solid #0ea5e9;
+        }
+        .other-month {
+            color: #94a3b8;
+            background-color: #f8fafc;
+        }
+        .event {
+            border-radius: 4px;
+            padding: 2px 6px;
+            margin: 2px 0;
+            font-size: 0.75rem;
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .modal {
+            transition: opacity 0.3s ease;
+        }
+        .alert-badge {
+            position: relative;
+        }
+        .alert-badge::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 8px;
+            height: 8px;
+            background-color: #ef4444;
+            border-radius: 50%;
+        }
+        .dropdown {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-blue-600 text-white p-4 shadow-md">
+            <div class="container mx-auto flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-2xl font-bold">Calendar App</h1>
+                    <button id="today-btn" class="bg-white text-blue-600 px-4 py-1 rounded-md hover:bg-blue-50 transition">Today</button>
+                    <div class="flex space-x-2">
+                        <button id="prev-btn" class="bg-blue-700 text-white p-2 rounded-md hover:bg-blue-800 transition">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button id="next-btn" class="bg-blue-700 text-white p-2 rounded-md hover:bg-blue-800 transition">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    <h2 id="current-date" class="text-xl font-semibold">August 2023</h2>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <button id="view-dropdown-btn" class="bg-blue-700 text-white px-4 py-2 rounded-md hover:bg-blue-800 transition flex items-center">
+                            Month <i class="fas fa-chevron-down ml-2"></i>
+                        </button>
+                        <div id="view-dropdown" class="hidden absolute z-10 mt-2 w-40 bg-white rounded-md shadow-lg">
+                            <div class="py-1">
+                                <a href="#" class="view-option block px-4 py-2 text-gray-800 hover:bg-blue-100" data-view="day">Day</a>
+                                <a href="#" class="view-option block px-4 py-2 text-gray-800 hover:bg-blue-100" data-view="week">Week</a>
+                                <a href="#" class="view-option block px-4 py-2 text-gray-800 hover:bg-blue-100" data-view="month">Month</a>
+                                <a href="#" class="view-option block px-4 py-2 text-gray-800 hover:bg-blue-100" data-view="year">Year</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <button id="year-dropdown-btn" class="bg-blue-700 text-white px-4 py-2 rounded-md hover:bg-blue-800 transition flex items-center">
+                            <span id="year-display">2023</span> <i class="fas fa-chevron-down ml-2"></i>
+                        </button>
+                        <div id="year-dropdown" class="hidden absolute z-10 mt-2 w-40 bg-white rounded-md shadow-lg dropdown">
+                            <div id="year-options" class="py-1">
+                                <!-- Years will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                    <button id="create-event-btn" class="bg-white text-blue-600 px-4 py-2 rounded-md hover:bg-blue-50 transition flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Create
+                    </button>
+                    <div class="relative">
+                        <button id="notifications-btn" class="text-white p-2 rounded-full hover:bg-blue-700 transition alert-badge">
+                            <i class="fas fa-bell"></i>
+                        </button>
+                        <div id="notifications-dropdown" class="hidden absolute right-0 z-10 mt-2 w-80 bg-white rounded-md shadow-lg">
+                            <div class="p-4 border-b">
+                                <h3 class="font-semibold text-gray-800">Notifications</h3>
+                            </div>
+                            <div id="notifications-list" class="py-2">
+                                <div class="px-4 py-3 text-gray-500 text-center">No notifications</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto p-4">
+            <!-- Calendar Views Container -->
+            <div id="calendar-container" class="bg-white rounded-lg shadow-md p-4">
+                <!-- Month View (Default) -->
+                <div id="month-view" class="view-container">
+                    <!-- Weekday Headers -->
+                    <div class="grid grid-cols-7 text-center font-semibold border-b pb-2 mb-2">
+                        <div>Sunday</div>
+                        <div>Monday</div>
+                        <div>Tuesday</div>
+                        <div>Wednesday</div>
+                        <div>Thursday</div>
+                        <div>Friday</div>
+                        <div>Saturday</div>
+                    </div>
+                    <!-- Calendar Grid -->
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-1">
+                        <!-- Calendar days will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Week View -->
+                <div id="week-view" class="view-container hidden">
+                    <div class="flex">
+                        <div class="w-16 border-r"></div>
+                        <div id="week-header" class="flex-grow grid grid-cols-7 text-center font-semibold">
+                            <!-- Week day headers will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    <div class="flex h-[600px] overflow-y-auto">
+                        <div class="w-16 border-r">
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">12 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">1 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">2 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">3 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">4 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">5 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">6 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">7 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">8 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">9 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">10 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">11 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">12 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">1 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">2 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">3 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">4 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">5 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">6 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">7 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">8 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">9 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">10 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">11 PM</div>
+                        </div>
+                        <div id="week-grid" class="flex-grow grid grid-cols-7">
+                            <!-- Week grid will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Day View -->
+                <div id="day-view" class="view-container hidden">
+                    <div id="day-header" class="text-center font-semibold text-xl mb-4">
+                        <!-- Day header will be populated by JavaScript -->
+                    </div>
+                    <div class="flex h-[600px] overflow-y-auto">
+                        <div class="w-16 border-r">
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">12 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">1 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">2 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">3 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">4 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">5 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">6 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">7 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">8 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">9 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">10 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">11 AM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">12 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">1 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">2 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">3 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">4 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">5 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">6 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">7 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">8 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">9 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">10 PM</div>
+                            <div class="h-12 text-right pr-2 text-sm text-gray-500">11 PM</div>
+                        </div>
+                        <div id="day-grid" class="flex-grow">
+                            <!-- Day grid will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Year View -->
+                <div id="year-view" class="view-container hidden">
+                    <div id="year-grid" class="grid grid-cols-3 gap-4">
+                        <!-- Year grid will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Event Modal -->
+    <div id="event-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modal-title" class="text-xl font-semibold text-gray-800">Create Event</h3>
+                <button id="close-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="event-form">
+                <div class="mb-4">
+                    <label for="event-title" class="block text-gray-700 font-medium mb-2">Title</label>
+                    <input type="text" id="event-title" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="event-date" class="block text-gray-700 font-medium mb-2">Date</label>
+                        <input type="date" id="event-date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    <div>
+                        <label for="event-time" class="block text-gray-700 font-medium mb-2">Time</label>
+                        <input type="time" id="event-time" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label for="event-color" class="block text-gray-700 font-medium mb-2">Color</label>
+                    <div class="grid grid-cols-6 gap-2">
+                        <div class="color-option w-8 h-8 rounded-full bg-blue-500 cursor-pointer" data-color="#3b82f6"></div>
+                        <div class="color-option w-8 h-8 rounded-full bg-red-500 cursor-pointer" data-color="#ef4444"></div>
+                        <div class="color-option w-8 h-8 rounded-full bg-green-500 cursor-pointer" data-color="#22c55e"></div>
+                        <div class="color-option w-8 h-8 rounded-full bg-yellow-500 cursor-pointer" data-color="#eab308"></div>
+                        <div class="color-option w-8 h-8 rounded-full bg-purple-500 cursor-pointer" data-color="#a855f7"></div>
+                        <div class="color-option w-8 h-8 rounded-full bg-pink-500 cursor-pointer" data-color="#ec4899"></div>
+                    </div>
+                    <input type="hidden" id="event-color" value="#3b82f6">
+                </div>
+                <div class="mb-4">
+                    <label for="event-description" class="block text-gray-700 font-medium mb-2">Description</label>
+                    <textarea id="event-description" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3"></textarea>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Reminder</label>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="event-reminder" class="mr-2">
+                        <select id="reminder-time" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="5">5 minutes before</option>
+                            <option value="10">10 minutes before</option>
+                            <option value="15">15 minutes before</option>
+                            <option value="30">30 minutes before</option>
+                            <option value="60">1 hour before</option>
+                            <option value="1440">1 day before</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Repeat</label>
+                    <select id="event-repeat" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="none">Does not repeat</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                    </select>
+                </div>
+                <div class="flex justify-between">
+                    <button type="button" id="delete-event" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition hidden">Delete</button>
+                    <div>
+                        <button type="button" id="cancel-event" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition mr-2">Cancel</button>
+                        <button type="submit" id="save-event" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">Save</button>
+                    </div>
+                </div>
+                <input type="hidden" id="event-id">
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notification-toast" class="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 hidden z-50 max-w-sm">
+        <div class="flex items-center">
+            <div class="flex-shrink-0 text-blue-500">
+                <i class="fas fa-bell"></i>
+            </div>
+            <div class="ml-3">
+                <p id="notification-title" class="font-medium text-gray-900">Event Reminder</p>
+                <p id="notification-message" class="text-sm text-gray-500">Your event is starting soon</p>
+            </div>
+            <div class="ml-auto pl-3">
+                <button id="close-notification" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // State variables
+            let currentDate = new Date();
+            let currentView = 'month';
+            let events = JSON.parse(localStorage.getItem('calendarEvents')) || [];
+            let notifications = JSON.parse(localStorage.getItem('calendarNotifications')) || [];
+            let selectedEvent = null;
+            let selectedColor = '#3b82f6';
+            let notificationCheckInterval;
+
+            // DOM elements
+            const calendarGrid = document.getElementById('calendar-grid');
+            const currentDateDisplay = document.getElementById('current-date');
+            const yearDisplay = document.getElementById('year-display');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const todayBtn = document.getElementById('today-btn');
+            const viewDropdownBtn = document.getElementById('view-dropdown-btn');
+            const viewDropdown = document.getElementById('view-dropdown');
+            const yearDropdownBtn = document.getElementById('year-dropdown-btn');
+            const yearDropdown = document.getElementById('year-dropdown');
+            const yearOptions = document.getElementById('year-options');
+            const viewOptions = document.querySelectorAll('.view-option');
+            const viewContainers = document.querySelectorAll('.view-container');
+            const createEventBtn = document.getElementById('create-event-btn');
+            const eventModal = document.getElementById('event-modal');
+            const closeModal = document.getElementById('close-modal');
+            const eventForm = document.getElementById('event-form');
+            const modalTitle = document.getElementById('modal-title');
+            const eventTitle = document.getElementById('event-title');
+            const eventDate = document.getElementById('event-date');
+            const eventTime = document.getElementById('event-time');
+            const eventDescription = document.getElementById('event-description');
+            const eventReminder = document.getElementById('event-reminder');
+            const reminderTime = document.getElementById('reminder-time');
+            const eventRepeat = document.getElementById('event-repeat');
+            const eventColorInput = document.getElementById('event-color');
+            const colorOptions = document.querySelectorAll('.color-option');
+            const deleteEventBtn = document.getElementById('delete-event');
+            const cancelEventBtn = document.getElementById('cancel-event');
+            const saveEventBtn = document.getElementById('save-event');
+            const eventIdInput = document.getElementById('event-id');
+            const notificationsBtn = document.getElementById('notifications-btn');
+            const notificationsDropdown = document.getElementById('notifications-dropdown');
+            const notificationsList = document.getElementById('notifications-list');
+            const notificationToast = document.getElementById('notification-toast');
+            const notificationTitle = document.getElementById('notification-title');
+            const notificationMessage = document.getElementById('notification-message');
+            const closeNotification = document.getElementById('close-notification');
+            const weekHeader = document.getElementById('week-header');
+            const weekGrid = document.getElementById('week-grid');
+            const dayHeader = document.getElementById('day-header');
+            const dayGrid = document.getElementById('day-grid');
+            const yearGrid = document.getElementById('year-grid');
+
+            // Initialize the calendar
+            init();
+
+            // Event listeners
+            prevBtn.addEventListener('click', navigatePrevious);
+            nextBtn.addEventListener('click', navigateNext);
+            todayBtn.addEventListener('click', navigateToday);
+            viewDropdownBtn.addEventListener('click', toggleViewDropdown);
+            yearDropdownBtn.addEventListener('click', toggleYearDropdown);
+            
+            viewOptions.forEach(option => {
+                option.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    changeView(e.target.dataset.view);
+                    viewDropdown.classList.add('hidden');
+                });
+            });
+
+            createEventBtn.addEventListener('click', openCreateEventModal);
+            closeModal.addEventListener('click', closeEventModal);
+            cancelEventBtn.addEventListener('click', closeEventModal);
+            eventForm.addEventListener('submit', saveEvent);
+            deleteEventBtn.addEventListener('click', deleteEvent);
+            
+            colorOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    selectedColor = option.dataset.color;
+                    eventColorInput.value = selectedColor;
+                    colorOptions.forEach(opt => opt.classList.remove('ring-2', 'ring-offset-2', 'ring-black'));
+                    option.classList.add('ring-2', 'ring-offset-2', 'ring-black');
+                });
+            });
+
+            notificationsBtn.addEventListener('click', toggleNotificationsDropdown);
+            closeNotification.addEventListener('click', () => {
+                notificationToast.classList.add('hidden');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!viewDropdownBtn.contains(e.target) && !viewDropdown.contains(e.target)) {
+                    viewDropdown.classList.add('hidden');
+                }
+                if (!yearDropdownBtn.contains(e.target) && !yearDropdown.contains(e.target)) {
+                    yearDropdown.classList.add('hidden');
+                }
+                if (!notificationsBtn.contains(e.target) && !notificationsDropdown.contains(e.target)) {
+                    notificationsDropdown.classList.add('hidden');
+                }
+            });
+
+            // Functions
+            function init() {
+                populateYearDropdown();
+                updateCalendar();
+                startNotificationCheck();
+                updateNotificationBadge();
+            }
+
+            function populateYearDropdown() {
+                // Populate years from 1900 to 5000
+                const currentYear = currentDate.getFullYear();
+                let yearHTML = '';
+                for (let year = 1900; year <= 5000; year++) {
+                    const isCurrentYear = year === currentYear;
+                    yearHTML += `<a href="#" class="year-option block px-4 py-2 text-gray-800 hover:bg-blue-100 ${isCurrentYear ? 'bg-blue-100' : ''}" data-year="${year}">${year}</a>`;
+                }
+                yearOptions.innerHTML = yearHTML;
+
+                // Add event listeners to year options
+                document.querySelectorAll('.year-option').forEach(option => {
+                    option.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const year = parseInt(e.target.dataset.year);
+                        currentDate.setFullYear(year);
+                        updateCalendar();
+                        yearDropdown.classList.add('hidden');
+                    });
+                });
+            }
+
+            function updateCalendar() {
+                updateDateDisplay();
+                
+                switch (currentView) {
+                    case 'month':
+                        renderMonthView();
+                        break;
+                    case 'week':
+                        renderWeekView();
+                        break;
+                    case 'day':
+                        renderDayView();
+                        break;
+                    case 'year':
+                        renderYearView();
+                        break;
+                }
+            }
+
+            function updateDateDisplay() {
+                const options = { month: 'long', year: 'numeric' };
+                currentDateDisplay.textContent = currentDate.toLocaleDateString(undefined, options);
+                yearDisplay.textContent = currentDate.getFullYear();
+            }
+
+            function renderMonthView() {
+                calendarGrid.innerHTML = '';
+                
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                
+                // Get first day of the month
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                
+                // Get the day of the week for the first day (0-6, where 0 is Sunday)
+                const firstDayOfWeek = firstDay.getDay();
+                
+                // Get the number of days in the month
+                const daysInMonth = lastDay.getDate();
+                
+                // Get the number of days in the previous month
+                const prevMonthLastDay = new Date(year, month, 0).getDate();
+                
+                // Get today's date for highlighting
+                const today = new Date();
+                const isCurrentMonth = today.getMonth() === month && today.getFullYear() === year;
+                
+                // Create calendar days
+                let dayCount = 1;
+                let nextMonthDay = 1;
+                
+                // Calculate how many rows we need (5 or 6 weeks)
+                const totalDays = firstDayOfWeek + daysInMonth;
+                const rows = Math.ceil(totalDays / 7);
+                
+                for (let i = 0; i < rows * 7; i++) {
+                    const dayElement = document.createElement('div');
+                    dayElement.classList.add('calendar-day', 'border', 'p-1');
+                    
+                    // Previous month days
+                    if (i < firstDayOfWeek) {
+                        const prevMonthDate = prevMonthLastDay - (firstDayOfWeek - i - 1);
+                        dayElement.classList.add('other-month');
+                        dayElement.innerHTML = `
+                            <div class="text-right text-sm">${prevMonthDate}</div>
+                            <div class="events-container"></div>
+                        `;
+                        
+                        const prevMonthFullDate = new Date(year, month - 1, prevMonthDate);
+                        dayElement.dataset.date = formatDate(prevMonthFullDate);
+                    }
+                    // Current month days
+                    else if (i < firstDayOfWeek + daysInMonth) {
+                        const isToday = isCurrentMonth && dayCount === today.getDate();
+                        if (isToday) {
+                            dayElement.classList.add('today');
+                        }
+                        
+                        dayElement.innerHTML = `
+                            <div class="text-right text-sm">${dayCount}</div>
+                            <div class="events-container"></div>
+                        `;
+                        
+                        const currentMonthDate = new Date(year, month, dayCount);
+                        dayElement.dataset.date = formatDate(currentMonthDate);
+                        dayCount++;
+                    }
+                    // Next month days
+                    else {
+                        dayElement.classList.add('other-month');
+                        dayElement.innerHTML = `
+                            <div class="text-right text-sm">${nextMonthDay}</div>
+                            <div class="events-container"></div>
+                        `;
+                        
+                        const nextMonthFullDate = new Date(year, month + 1, nextMonthDay);
+                        dayElement.dataset.date = formatDate(nextMonthFullDate);
+                        nextMonthDay++;
+                    }
+                    
+                    // Add click event to open create event modal
+                    dayElement.addEventListener('click', (e) => {
+                        if (!e.target.classList.contains('event')) {
+                            const date = dayElement.dataset.date;
+                            openCreateEventModal(date);
+                        }
+                    });
+                    
+                    calendarGrid.appendChild(dayElement);
+                }
+                
+                // Render events
+                renderEvents();
+            }
+
+            function renderWeekView() {
+                // Get the first day of the week (Sunday) for the current date
+                const currentDay = currentDate.getDay(); // 0 for Sunday, 1 for Monday, etc.
+                const firstDayOfWeek = new Date(currentDate);
+                firstDayOfWeek.setDate(currentDate.getDate() - currentDay);
+                
+                // Clear previous content
+                weekHeader.innerHTML = '';
+                weekGrid.innerHTML = '';
+                
+                // Create week day headers
+                for (let i = 0; i < 7; i++) {
+                    const day = new Date(firstDayOfWeek);
+                    day.setDate(firstDayOfWeek.getDate() + i);
+                    
+                    const isToday = isSameDay(day, new Date());
+                    
+                    const dayHeader = document.createElement('div');
+                    dayHeader.classList.add('text-center', 'py-2', 'border-b');
+                    if (isToday) {
+                        dayHeader.classList.add('bg-blue-100', 'font-bold');
+                    }
+                    
+                    const dayName = day.toLocaleDateString(undefined, { weekday: 'short' });
+                    const dayNum = day.getDate();
+                    dayHeader.innerHTML = `
+                        <div>${dayName}</div>
+                        <div class="text-lg">${dayNum}</div>
+                    `;
+                    
+                    weekHeader.appendChild(dayHeader);
+                }
+                
+                // Create time slots for each day
+                for (let day = 0; day < 7; day++) {
+                    const dayColumn = document.createElement('div');
+                    dayColumn.classList.add('border-r');
+                    
+                    const currentDay = new Date(firstDayOfWeek);
+                    currentDay.setDate(firstDayOfWeek.getDate() + day);
+                    const dateStr = formatDate(currentDay);
+                    
+                    // Create 24 hour slots
+                    for (let hour = 0; hour < 24; hour++) {
+                        const hourSlot = document.createElement('div');
+                        hourSlot.classList.add('h-12', 'border-b', 'relative');
+                        hourSlot.dataset.date = dateStr;
+                        hourSlot.dataset.hour = hour;
+                        
+                        // Add click event to create event at this time
+                        hourSlot.addEventListener('click', () => {
+                            const date = new Date(currentDay);
+                            date.setHours(hour, 0, 0, 0);
+                            openCreateEventModal(formatDateTimeForInput(date));
+                        });
+                        
+                        dayColumn.appendChild(hourSlot);
+                    }
+                    
+                    weekGrid.appendChild(dayColumn);
+                }
+                
+                // Render events in week view
+                renderEventsInWeekView(firstDayOfWeek);
+            }
+
+            function renderDayView() {
+                // Clear previous content
+                dayHeader.innerHTML = '';
+                dayGrid.innerHTML = '';
+                
+                // Set day header
+                const dayName = currentDate.toLocaleDateString(undefined, { weekday: 'long' });
+                const monthDay = currentDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+                dayHeader.innerHTML = `${dayName}, ${monthDay}`;
+                
+                // Create day column
+                const dayColumn = document.createElement('div');
+                dayColumn.classList.add('w-full');
+                
+                const dateStr = formatDate(currentDate);
+                
+                // Create 24 hour slots
+                for (let hour = 0; hour < 24; hour++) {
+                    const hourSlot = document.createElement('div');
+                    hourSlot.classList.add('h-12', 'border-b', 'relative');
+                    hourSlot.dataset.date = dateStr;
+                    hourSlot.dataset.hour = hour;
+                    
+                    // Add click event to create event at this time
+                    hourSlot.addEventListener('click', () => {
+                        const date = new Date(currentDate);
+                        date.setHours(hour, 0, 0, 0);
+                        openCreateEventModal(formatDateTimeForInput(date));
+                    });
+                    
+                    dayColumn.appendChild(hourSlot);
+                }
+                
+                dayGrid.appendChild(dayColumn);
+                
+                // Render events in day view
+                renderEventsInDayView();
+            }
+
+            function renderYearView() {
+                yearGrid.innerHTML = '';
+                const year = currentDate.getFullYear();
+                
+                // Create a mini calendar for each month
+                for (let month = 0; month < 12; month++) {
+                    const monthContainer = document.createElement('div');
+                    monthContainer.classList.add('border', 'rounded-lg', 'overflow-hidden');
+                    
+                    // Month header
+                    const monthName = new Date(year, month, 1).toLocaleDateString(undefined, { month: 'long' });
+                    const monthHeader = document.createElement('div');
+                    monthHeader.classList.add('bg-blue-100', 'text-center', 'py-2', 'font-semibold');
+                    monthHeader.textContent = monthName;
+                    monthContainer.appendChild(monthHeader);
+                    
+                    // Create mini calendar grid
+                    const calendarGrid = document.createElement('div');
+                    calendarGrid.classList.add('grid', 'grid-cols-7', 'text-center', 'text-xs');
+                    
+                    // Add day headers (S M T W T F S)
+                    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+                    days.forEach(day => {
+                        const dayHeader = document.createElement('div');
+                        dayHeader.classList.add('py-1', 'text-gray-500');
+                        dayHeader.textContent = day;
+                        calendarGrid.appendChild(dayHeader);
+                    });
+                    
+                    // Get first day of the month and number of days
+                    const firstDay = new Date(year, month, 1);
+                    const lastDay = new Date(year, month + 1, 0);
+                    const firstDayOfWeek = firstDay.getDay();
+                    const daysInMonth = lastDay.getDate();
+                    
+                    // Add empty cells for days before the first of the month
+                    for (let i = 0; i < firstDayOfWeek; i++) {
+                        const emptyDay = document.createElement('div');
+                        emptyDay.classList.add('py-1');
+                        calendarGrid.appendChild(emptyDay);
+                    }
+                    
+                    // Add days of the month
+                    const today = new Date();
+                    const isCurrentMonth = today.getMonth() === month && today.getFullYear() === year;
+                    
+                    for (let day = 1; day <= daysInMonth; day++) {
+                        const dayCell = document.createElement('div');
+                        dayCell.classList.add('py-1', 'hover:bg-gray-100', 'cursor-pointer');
+                        
+                        if (isCurrentMonth && day === today.getDate()) {
+                            dayCell.classList.add('bg-blue-200', 'rounded-full');
+                        }
+                        
+                        dayCell.textContent = day;
+                        
+                        // Add click event to navigate to this day
+                        dayCell.addEventListener('click', () => {
+                            currentDate = new Date(year, month, day);
+                            changeView('day');
+                        });
+                        
+                        // Check if there are events on this day
+                        const dateStr = formatDate(new Date(year, month, day));
+                        const hasEvents = events.some(event => {
+                            if (event.date === dateStr) return true;
+                            if (event.repeat === 'daily') return true;
+                            if (event.repeat === 'weekly') {
+                                const eventDate = new Date(event.date);
+                                return eventDate.getDay() === new Date(year, month, day).getDay();
+                            }
+                            if (event.repeat === 'monthly') {
+                                const eventDate = new Date(event.date);
+                                return eventDate.getDate() === day;
+                            }
+                            if (event.repeat === 'yearly') {
+                                const eventDate = new Date(event.date);
+                                return eventDate.getMonth() === month && eventDate.getDate() === day;
+                            }
+                            return false;
+                        });
+                        
+                        if (hasEvents) {
+                            dayCell.classList.add('font-bold');
+                            // Add a small dot to indicate events
+                            const dot = document.createElement('div');
+                            dot.classList.add('w-1', 'h-1', 'bg-blue-500', 'rounded-full', 'mx-auto', 'mt-1');
+                            dayCell.appendChild(dot);
+                        }
+                        
+                        calendarGrid.appendChild(dayCell);
+                    }
+                    
+                    monthContainer.appendChild(calendarGrid);
+                    yearGrid.appendChild(monthContainer);
+                }
+            }
+
+            function renderEvents() {
+                // Clear all events first
+                document.querySelectorAll('.events-container').forEach(container => {
+                    container.innerHTML = '';
+                });
+                
+                // Render each event
+                events.forEach(event => {
+                    renderEvent(event);
+                });
+            }
+
+            function renderEvent(event) {
+                // Handle recurring events
+                if (event.repeat !== 'none') {
+                    renderRecurringEvent(event);
+                    return;
+                }
+                
+                // Find the day element for this event
+                const dayElement = document.querySelector(`[data-date="${event.date}"]`);
+                if (!dayElement) return;
+                
+                // Create event element
+                const eventElement = createEventElement(event);
+                
+                // Add to the day's events container
+                const eventsContainer = dayElement.querySelector('.events-container');
+                eventsContainer.appendChild(eventElement);
+            }
+
+            function renderRecurringEvent(event) {
+                const eventDate = new Date(event.date);
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                
+                // Get all days in the current month view
+                const dayElements = document.querySelectorAll('.calendar-day');
+                
+                dayElements.forEach(dayElement => {
+                    const dateStr = dayElement.dataset.date;
+                    const date = new Date(dateStr);
+                    
+                    let shouldRender = false;
+                    
+                    switch (event.repeat) {
+                        case 'daily':
+                            shouldRender = true;
+                            break;
+                        case 'weekly':
+                            shouldRender = date.getDay() === eventDate.getDay();
+                            break;
+                        case 'monthly':
+                            shouldRender = date.getDate() === eventDate.getDate();
+                            break;
+                        case 'yearly':
+                            shouldRender = date.getMonth() === eventDate.getMonth() && 
+                                          date.getDate() === eventDate.getDate();
+                            break;
+                    }
+                    
+                    if (shouldRender) {
+                        // Create a copy of the event with the current date
+                        const eventCopy = { ...event, originalDate: event.date, date: dateStr };
+                        
+                        // Create event element
+                        const eventElement = createEventElement(eventCopy);
+                        
+                        // Add to the day's events container
+                        const eventsContainer = dayElement.querySelector('.events-container');
+                        eventsContainer.appendChild(eventElement);
+                    }
+                });
+            }
+
+            function renderEventsInWeekView(firstDayOfWeek) {
+                events.forEach(event => {
+                    // For recurring events, we need to check if they occur in this week
+                    if (event.repeat !== 'none') {
+                        renderRecurringEventInWeekView(event, firstDayOfWeek);
+                        return;
+                    }
+                    
+                    const eventDate = new Date(event.date);
+                    const eventDay = eventDate.getDay(); // 0-6 (Sunday-Saturday)
+                    
+                    // Check if the event is in the current week
+                    const weekStart = new Date(firstDayOfWeek);
+                    const weekEnd = new Date(firstDayOfWeek);
+                    weekEnd.setDate(weekEnd.getDate() + 6);
+                    
+                    if (eventDate >= weekStart && eventDate <= weekEnd) {
+                        // Get the hour from the event time
+                        let hour = 0;
+                        if (event.time) {
+                            const [hours] = event.time.split(':');
+                            hour = parseInt(hours);
+                        }
+                        
+                        // Find the corresponding hour slot
+                        const hourSlot = weekGrid.children[eventDay].children[hour];
+                        if (hourSlot) {
+                            // Create event element
+                            const eventElement = document.createElement('div');
+                            eventElement.classList.add('absolute', 'inset-x-0', 'mx-1', 'rounded', 'px-2', 'text-white', 'text-xs', 'truncate');
+                            eventElement.style.backgroundColor = event.color;
+                            eventElement.style.top = '2px';
+                            eventElement.style.height = 'calc(100% - 4px)';
+                            eventElement.textContent = event.title;
+                            
+                            // Add click event to open event details
+                            eventElement.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                openEditEventModal(event);
+                            });
+                            
+                            hourSlot.appendChild(eventElement);
+                        }
+                    }
+                });
+            }
+
+            function renderRecurringEventInWeekView(event, firstDayOfWeek) {
+                const eventDate = new Date(event.date);
+                const weekStart = new Date(firstDayOfWeek);
+                const weekEnd = new Date(firstDayOfWeek);
+                weekEnd.setDate(weekEnd.getDate() + 6);
+                
+                // Get the hour from the event time
+                let hour = 0;
+                if (event.time) {
+                    const [hours] = event.time.split(':');
+                    hour = parseInt(hours);
+                }
+                
+                // For each day in the week
+                for (let day = 0; day < 7; day++) {
+                    const currentDay = new Date(weekStart);
+                    currentDay.setDate(currentDay.getDate() + day);
+                    
+                    let shouldRender = false;
+                    
+                    switch (event.repeat) {
+                        case 'daily':
+                            shouldRender = true;
+                            break;
+                        case 'weekly':
+                            shouldRender = currentDay.getDay() === eventDate.getDay();
+                            break;
+                        case 'monthly':
+                            shouldRender = currentDay.getDate() === eventDate.getDate();
+                            break;
+                        case 'yearly':
+                            shouldRender = currentDay.getMonth() === eventDate.getMonth() && 
+                                          currentDay.getDate() === eventDate.getDate();
+                            break;
+                    }
+                    
+                    if (shouldRender) {
+                        // Find the corresponding hour slot
+                        const hourSlot = weekGrid.children[day].children[hour];
+                        if (hourSlot) {
+                            // Create a copy of the event with the current date
+                            const eventCopy = { 
+                                ...event, 
+                                originalDate: event.date, 
+                                date: formatDate(currentDay)
+                            };
+                            
+                            // Create event element
+                            const eventElement = document.createElement('div');
+                            eventElement.classList.add('absolute', 'inset-x-0', 'mx-1', 'rounded', 'px-2', 'text-white', 'text-xs', 'truncate');
+                            eventElement.style.backgroundColor = event.color;
+                            eventElement.style.top = '2px';
+                            eventElement.style.height = 'calc(100% - 4px)';
+                            eventElement.textContent = event.title;
+                            
+                            // Add click event to open event details
+                            eventElement.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                openEditEventModal(eventCopy);
+                            });
+                            
+                            hourSlot.appendChild(eventElement);
+                        }
+                    }
+                }
+            }
+
+            function renderEventsInDayView() {
+                events.forEach(event => {
+                    // For recurring events, we need to check if they occur on this day
+                    if (event.repeat !== 'none') {
+                        renderRecurringEventInDayView(event);
+                        return;
+                    }
+                    
+                    const eventDate = new Date(event.date);
+                    
+                    // Check if the event is on the current day
+                    if (isSameDay(eventDate, currentDate)) {
+                        // Get the hour from the event time
+                        let hour = 0;
+                        if (event.time) {
+                            const [hours] = event.time.split(':');
+                            hour = parseInt(hours);
+                        }
+                        
+                        // Find the corresponding hour slot
+                        const hourSlot = dayGrid.querySelector(`[data-hour="${hour}"]`);
+                        if (hourSlot) {
+                            // Create event element
+                            const eventElement = document.createElement('div');
+                            eventElement.classList.add('absolute', 'inset-x-0', 'mx-1', 'rounded', 'px-2', 'text-white', 'text-sm', 'truncate');
+                            eventElement.style.backgroundColor = event.color;
+                            eventElement.style.top = '2px';
+                            eventElement.style.height = 'calc(100% - 4px)';
+                            eventElement.innerHTML = `
+                                <div class="font-semibold">${event.title}</div>
+                                <div class="text-xs">${event.time || ''}</div>
+                            `;
+                            
+                            // Add click event to open event details
+                            eventElement.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                openEditEventModal(event);
+                            });
+                            
+                            hourSlot.appendChild(eventElement);
+                        }
+                    }
+                });
+            }
+
+            function renderRecurringEventInDayView(event) {
+                const eventDate = new Date(event.date);
+                let shouldRender = false;
+                
+                switch (event.repeat) {
+                    case 'daily':
+                        shouldRender = true;
+                        break;
+                    case 'weekly':
+                        shouldRender = currentDate.getDay() === eventDate.getDay();
+                        break;
+                    case 'monthly':
+                        shouldRender = currentDate.getDate() === eventDate.getDate();
+                        break;
+                    case 'yearly':
+                        shouldRender = currentDate.getMonth() === eventDate.getMonth() && 
+                                      currentDate.getDate() === eventDate.getDate();
+                        break;
+                }
+                
+                if (shouldRender) {
+                    // Get the hour from the event time
+                    let hour = 0;
+                    if (event.time) {
+                        const [hours] = event.time.split(':');
+                        hour = parseInt(hours);
+                    }
+                    
+                    // Find the corresponding hour slot
+                    const hourSlot = dayGrid.querySelector(`[data-hour="${hour}"]`);
+                    if (hourSlot) {
+                        // Create a copy of the event with the current date
+                        const eventCopy = { 
+                            ...event, 
+                            originalDate: event.date, 
+                            date: formatDate(currentDate)
+                        };
+                        
+                        // Create event element
+                        const eventElement = document.createElement('div');
+                        eventElement.classList.add('absolute', 'inset-x-0', 'mx-1', 'rounded', 'px-2', 'text-white', 'text-sm', 'truncate');
+                        eventElement.style.backgroundColor = event.color;
+                        eventElement.style.top = '2px';
+                        eventElement.style.height = 'calc(100% - 4px)';
+                        eventElement.innerHTML = `
+                            <div class="font-semibold">${event.title}</div>
+                            <div class="text-xs">${event.time || ''}</div>
+                            <div class="text-xs">${event.repeat} event</div>
+                        `;
+                        
+                        // Add click event to open event details
+                        eventElement.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            openEditEventModal(eventCopy);
+                        });
+                        
+                        hourSlot.appendChild(eventElement);
+                    }
+                }
+            }
+
+            function createEventElement(event) {
+                const eventElement = document.createElement('div');
+                eventElement.classList.add('event', 'text-xs', 'truncate');
+                eventElement.style.backgroundColor = event.color;
+                eventElement.textContent = event.title;
+                
+                // Add click event to open event details
+                eventElement.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openEditEventModal(event);
+                });
+                
+                return eventElement;
+            }
+
+            function navigatePrevious() {
+                switch (currentView) {
+                    case 'month':
+                        currentDate.setMonth(currentDate.getMonth() - 1);
+                        break;
+                    case 'week':
+                        currentDate.setDate(currentDate.getDate() - 7);
+                        break;
+                    case 'day':
+                        currentDate.setDate(currentDate.getDate() - 1);
+                        break;
+                    case 'year':
+                        currentDate.setFullYear(currentDate.getFullYear() - 1);
+                        break;
+                }
+                updateCalendar();
+            }
+
+            function navigateNext() {
+                switch (currentView) {
+                    case 'month':
+                        currentDate.setMonth(currentDate.getMonth() + 1);
+                        break;
+                    case 'week':
+                        currentDate.setDate(currentDate.getDate() + 7);
+                        break;
+                    case 'day':
+                        currentDate.setDate(currentDate.getDate() + 1);
+                        break;
+                    case 'year':
+                        currentDate.setFullYear(currentDate.getFullYear() + 1);
+                        break;
+                }
+                updateCalendar();
+            }
+
+            function navigateToday() {
+                currentDate = new Date();
+                updateCalendar();
+            }
+
+            function toggleViewDropdown() {
+                viewDropdown.classList.toggle('hidden');
+            }
+
+            function toggleYearDropdown() {
+                yearDropdown.classList.toggle('hidden');
+                
+                // Scroll to the current year
+                if (!yearDropdown.classList.contains('hidden')) {
+                    const currentYearElement = yearOptions.querySelector(`[data-year="${currentDate.getFullYear()}"]`);
+                    if (currentYearElement) {
+                        currentYearElement.scrollIntoView({ block: 'center' });
+                    }
+                }
+            }
+
+            function toggleNotificationsDropdown() {
+                notificationsDropdown.classList.toggle('hidden');
+                updateNotificationsList();
+            }
+
+            function changeView(view) {
+                currentView = view;
+                
+                // Update view dropdown button text
+                viewDropdownBtn.innerHTML = `${view.charAt(0).toUpperCase() + view.slice(1)} <i class="fas fa-chevron-down ml-2"></i>`;
+                
+                // Hide all view containers
+                viewContainers.forEach(container => {
+                    container.classList.add('hidden');
+                });
+                
+                // Show the selected view container
+                document.getElementById(`${view}-view`).classList.remove('hidden');
+                
+                updateCalendar();
+            }
+
+            function openCreateEventModal(date) {
+                modalTitle.textContent = 'Create Event';
+                eventForm.reset();
+                selectedEvent = null;
+                deleteEventBtn.classList.add('hidden');
+                
+                // Set default color
+                selectedColor = '#3b82f6';
+                eventColorInput.value = selectedColor;
+                colorOptions.forEach(opt => {
+                    if (opt.dataset.color === selectedColor) {
+                        opt.classList.add('ring-2', 'ring-offset-2', 'ring-black');
+                    } else {
+                        opt.classList.remove('ring-2', 'ring-offset-2', 'ring-black');
+                    }
+                });
+                
+                // If a date was provided, set it
+                if (date) {
+                    if (date.includes('T')) {
+                        // Date and time provided
+                        const [dateStr, timeStr] = date.split('T');
+                        eventDate.value = dateStr;
+                        eventTime.value = timeStr;
+                    } else {
+                        // Only date provided
+                        eventDate.value = date;
+                    }
+                } else {
+                    // Default to current date
+                    eventDate.value = formatDate(new Date());
+                }
+                
+                eventModal.classList.remove('hidden');
+            }
+
+            function openEditEventModal(event) {
+                modalTitle.textContent = 'Edit Event';
+                selectedEvent = event;
+                
+                eventTitle.value = event.title;
+                eventDate.value = event.originalDate || event.date;
+                eventTime.value = event.time || '';
+                eventDescription.value = event.description || '';
+                eventReminder.checked = event.reminder;
+                reminderTime.value = event.reminderTime || '30';
+                eventRepeat.value = event.repeat || 'none';
+                eventIdInput.value = event.id;
+                
+                // Set event color
+                selectedColor = event.color;
+                eventColorInput.value = selectedColor;
+                colorOptions.forEach(opt => {
+                    if (opt.dataset.color === selectedColor) {
+                        opt.classList.add('ring-2', 'ring-offset-2', 'ring-black');
+                    } else {
+                        opt.classList.remove('ring-2', 'ring-offset-2', 'ring-black');
+                    }
+                });
+                
+                deleteEventBtn.classList.remove('hidden');
+                eventModal.classList.remove('hidden');
+            }
+
+            function closeEventModal() {
+                eventModal.classList.add('hidden');
+            }
+
+            function saveEvent(e) {
+                e.preventDefault();
+                
+                const eventId = selectedEvent ? selectedEvent.id : generateId();
+                
+                const eventData = {
+                    id: eventId,
+                    title: eventTitle.value,
+                    date: eventDate.value,
+                    time: eventTime.value,
+                    description: eventDescription.value,
+                    color: selectedColor,
+                    reminder: eventReminder.checked,
+                    reminderTime: eventReminder.checked ? reminderTime.value : null,
+                    repeat: eventRepeat.value
+                };
+                
+                if (selectedEvent) {
+                    // Update existing event
+                    const index = events.findIndex(e => e.id === eventId);
+                    if (index !== -1) {
+                        events[index] = eventData;
+                    }
+                } else {
+                    // Add new event
+                    events.push(eventData);
+                }
+                
+                // Save to localStorage
+                localStorage.setItem('calendarEvents', JSON.stringify(events));
+                
+                // Close modal and update calendar
+                closeEventModal();
+                updateCalendar();
+                
+                // Check for reminders
+                checkReminders();
+            }
+
+            function deleteEvent() {
+                if (selectedEvent) {
+                    // Remove event
+                    events = events.filter(e => e.id !== selectedEvent.id);
+                    
+                    // Save to localStorage
+                    localStorage.setItem('calendarEvents', JSON.stringify(events));
+                    
+                    // Close modal and update calendar
+                    closeEventModal();
+                    updateCalendar();
+                }
+            }
+
+            function generateId() {
+                return Date.now().toString(36) + Math.random().toString(36).substr(2);
+            }
+
+            function formatDate(date) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+
+            function formatDateTimeForInput(date) {
+                const dateStr = formatDate(date);
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${dateStr}T${hours}:${minutes}`;
+            }
+
+            function isSameDay(date1, date2) {
+                return date1.getFullYear() === date2.getFullYear() &&
+                       date1.getMonth() === date2.getMonth() &&
+                       date1.getDate() === date2.getDate();
+            }
+
+            function startNotificationCheck() {
+                // Check for reminders every minute
+                notificationCheckInterval = setInterval(checkReminders, 60000);
+                checkReminders(); // Check immediately on load
+            }
+
+            function checkReminders() {
+                const now = new Date();
+                
+                events.forEach(event => {
+                    if (!event.reminder) return;
+                    
+                    // Check if this event should trigger a reminder
+                    let eventDateTime;
+                    
+                    if (event.time) {
+                        // Event has a specific time
+                        eventDateTime = new Date(`${event.date}T${event.time}`);
+                    } else {
+                        // All-day event, set to 9 AM
+                        eventDateTime = new Date(`${event.date}T09:00`);
+                    }
+                    
+                    // Calculate reminder time (minutes before event)
+                    const reminderTime = parseInt(event.reminderTime) || 30;
+                    const reminderDateTime = new Date(eventDateTime.getTime() - (reminderTime * 60000));
+                    
+                    // Check if it's time for the reminder
+                    if (now >= reminderDateTime && now < eventDateTime) {
+                        // Check if we've already shown this reminder
+                        const reminderKey = `${event.id}_${event.date}`;
+                        const reminderShown = notifications.some(n => n.key === reminderKey);
+                        
+                        if (!reminderShown) {
+                            // Create notification
+                            const notification = {
+                                id: generateId(),
+                                key: reminderKey,
+                                title: event.title,
+                                message: `Event starts in ${reminderTime} minutes`,
+                                time: now.toISOString(),
+                                read: false
+                            };
+                            
+                            notifications.push(notification);
+                            localStorage.setItem('calendarNotifications', JSON.stringify(notifications));
+                            
+                            // Show notification toast
+                            showNotificationToast(notification);
+                            
+                            // Update notification badge
+                            updateNotificationBadge();
+                        }
+                    }
+                    
+                    // For recurring events, check if they occur today
+                    if (event.repeat !== 'none') {
+                        checkRecurringEventReminder(event);
+                    }
+                });
+            }
+
+            function checkRecurringEventReminder(event) {
+                const now = new Date();
+                const today = formatDate(now);
+                const eventDate = new Date(event.date);
+                
+                let shouldCheck = false;
+                
+                switch (event.repeat) {
+                    case 'daily':
+                        shouldCheck = true;
+                        break;
+                    case 'weekly':
+                        shouldCheck = now.getDay() === eventDate.getDay();
+                        break;
+                    case 'monthly':
+                        shouldCheck = now.getDate() === eventDate.getDate();
+                        break;
+                    case 'yearly':
+                        shouldCheck = now.getMonth() === eventDate.getMonth() && 
+                                     now.getDate() === eventDate.getDate();
+                        break;
+                }
+                
+                if (shouldCheck && event.reminder) {
+                    // Create a datetime for today with the event's time
+                    let eventDateTime;
+                    
+                    if (event.time) {
+                        eventDateTime = new Date(`${today}T${event.time}`);
+                    } else {
+                        eventDateTime = new Date(`${today}T09:00`);
+                    }
+                    
+                    // Calculate reminder time
+                    const reminderTime = parseInt(event.reminderTime) || 30;
+                    const reminderDateTime = new Date(eventDateTime.getTime() - (reminderTime * 60000));
+                    
+                    // Check if it's time for the reminder
+                    if (now >= reminderDateTime && now < eventDateTime) {
+                        // Check if we've already shown this reminder
+                        const reminderKey = `${event.id}_${today}`;
+                        const reminderShown = notifications.some(n => n.key === reminderKey);
+                        
+                        if (!reminderShown) {
+                            // Create notification
+                            const notification = {
+                                id: generateId(),
+                                key: reminderKey,
+                                title: event.title,
+                                message: `Recurring event starts in ${reminderTime} minutes`,
+                                time: now.toISOString(),
+                                read: false
+                            };
+                            
+                            notifications.push(notification);
+                            localStorage.setItem('calendarNotifications', JSON.stringify(notifications));
+                            
+                            // Show notification toast
+                            showNotificationToast(notification);
+                            
+                            // Update notification badge
+                            updateNotificationBadge();
+                        }
+                    }
+                }
+            }
+
+            function showNotificationToast(notification) {
+                notificationTitle.textContent = notification.title;
+                notificationMessage.textContent = notification.message;
+                notificationToast.classList.remove('hidden');
+                
+                // Hide after 5 seconds
+                setTimeout(() => {
+                    notificationToast.classList.add('hidden');
+                }, 5000);
+            }
+
+            function updateNotificationBadge() {
+                const unreadCount = notifications.filter(n => !n.read).length;
+                
+                if (unreadCount > 0) {
+                    notificationsBtn.classList.add('alert-badge');
+                } else {
+                    notificationsBtn.classList.remove('alert-badge');
+                }
+            }
+
+            function updateNotificationsList() {
+                if (notifications.length === 0) {
+                    notificationsList.innerHTML = '<div class="px-4 py-3 text-gray-500 text-center">No notifications</div>';
+                    return;
+                }
+                
+                // Sort notifications by time (newest first)
+                const sortedNotifications = [...notifications].sort((a, b) => {
+                    return new Date(b.time) - new Date(a.time);
+                });
+                
+                let notificationsHTML = '';
+                
+                sortedNotifications.forEach(notification => {
+                    const notificationTime = new Date(notification.time);
+                    const timeString = notificationTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const dateString = notificationTime.toLocaleDateString();
+                    
+                    notificationsHTML += `
+                        <div class="px-4 py-3 border-b hover:bg-gray-50 ${notification.read ? 'text-gray-500' : 'font-semibold'}">
+                            <div class="flex justify-between">
+                                <div>${notification.title}</div>
+                                <div class="text-xs text-gray-500">${timeString}</div>
+                            </div>
+                            <div class="text-sm">${notification.message}</div>
+                            <div class="text-xs text-gray-500">${dateString}</div>
+                        </div>
+                    `;
+                    
+                    // Mark as read
+                    notification.read = true;
+                });
+                
+                notificationsList.innerHTML = notificationsHTML;
+                
+                // Save updated read status
+                localStorage.setItem('calendarNotifications', JSON.stringify(notifications));
+                
+                // Update notification badge
+                updateNotificationBadge();
+            }
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'965225fb77e646a0',t:'MTc1MzUxNDU3Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
